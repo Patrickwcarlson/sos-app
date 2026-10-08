@@ -28,13 +28,6 @@
   #nav button span { font-size: 22px; line-height: 1; }
   #nav button.on { color: var(--blue); }
   #nav button.on span { transform: scale(1.08); }
-  #home { position: fixed; left: 12px; right: 12px; bottom: calc(var(--navh) + env(safe-area-inset-bottom) + 10px); z-index: 9; display: none;
-    background: #0f1b2d; color: #fff; border-radius: 16px; padding: 12px 12px 12px 14px; box-shadow: 0 10px 30px rgba(15,27,45,.35); align-items: center; gap: 10px; font-size: 14px; }
-  body:not(.hasnav) #home { bottom: calc(env(safe-area-inset-bottom) + 12px); }
-  #home.show { display: flex; }
-  #home b { display: block; font-size: 15px; }
-  #home .add { margin-left: auto; background: #fff; color: #1a5490; border: 0; border-radius: 999px; padding: 9px 14px; font-weight: 800; font-size: 14px; }
-  #home .x { background: none; border: 0; color: #9fb0c4; font-size: 20px; padding: 0 2px; }
 </style>
 </head>
 <body>
@@ -42,7 +35,6 @@
 <div id="cover"><div class="logo">SOS Spray Foam</div><div class="spin" id="spin"></div><div class="msg" id="msg">Loading…</div>
   <button class="retry" id="retry" onclick="location.reload()">Try again</button></div>
 <div id="frames"></div>
-<div id="home"><div style="font-size:26px">📲</div><div><b>Put SOS on your home screen</b>Open it with one tap, no chat.</div><button class="add" id="homeAdd">Add</button><button class="x" id="homeX">✕</button></div>
 <div id="nav">
   <button data-go="board"><span>📋</span>Board</button>
   <button data-go="new"><span>➕</span>New</button>
@@ -233,18 +225,6 @@
   } catch (e) { }
 
   // first screen: whatever the button asked for; owners also get the Board and Price list ready in the background
-  // 📲 home-screen button: offered once, if this phone's Telegram can do it
-  (function () {
-    var box = document.getElementById('home');
-    var no = false; try { no = localStorage.getItem('sosHomeNo') === '1'; } catch (e) { }
-    function hide(forever) { box.classList.remove('show'); if (forever) { try { localStorage.setItem('sosHomeNo', '1'); } catch (e) { } } }
-    document.getElementById('homeX').onclick = function () { hide(true); };
-    document.getElementById('homeAdd').onclick = function () { try { TG.addToHomeScreen(); } catch (e) { } hide(true); };
-    try { TG.onEvent && TG.onEvent('homeScreenAdded', function () { hide(true); }); } catch (e) { }
-    if (no || !TG.checkHomeScreenStatus) return;
-    try { TG.checkHomeScreenStatus(function (st) { if (st === 'missed' || st === 'unknown') setTimeout(function () { box.classList.add('show'); }, 2500); }); } catch (e) { }
-  })();
-
   ROLE = String(hash.p || '') === 'crew' ? 'crew' : 'owner';          // the server corrects this with the first screen
   document.body.classList.toggle('hasnav', ROLE === 'owner');
   var first = tabFor(hash);
