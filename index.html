@@ -516,7 +516,7 @@
         document.getElementById('shClose').onclick = closeSheet;
         document.getElementById('op').onclick = function () { try { TG.openLink(link, { try_instant_view: false }); } catch (e) { window.open(link, '_blank'); } };
         document.getElementById('cp').onclick = function () { try { navigator.clipboard.writeText(link).then(function () { alert('Copied. Paste it into ' + (ios ? 'Safari' : 'Chrome') + '.'); }); } catch (e) { prompt('Copy this link:', link); } };
-        try { localStorage.setItem('sosHomeNo', '1'); } catch (e) { }
+        try { localStorage.setItem('sosHomeNo2', '1'); } catch (e) { }
       }).catch(function (e) { b.disabled = false; b.textContent = 'Make my phone link'; alert(e.message); });
     };
   }
@@ -524,8 +524,8 @@
     try { if (TG.SettingsButton) { TG.SettingsButton.show(); TG.SettingsButton.onClick(setupSheet); } } catch (e) { }
     (function () {
       var box = document.getElementById('home');
-      if (ls('sosHomeNo') === '1') return;
-      document.getElementById('homeX').onclick = function () { box.classList.remove('show'); ls('sosHomeNo', '1'); };
+      if (ls('sosHomeNo2') === '1') return;
+      document.getElementById('homeX').onclick = function () { box.classList.remove('show'); ls('sosHomeNo2', '1'); };
       document.getElementById('homeAdd').onclick = function () { box.classList.remove('show'); setupSheet(); };
       setTimeout(function () { box.classList.add('show'); }, 2500);
     })();
