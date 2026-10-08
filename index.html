@@ -4,37 +4,79 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>SOS Spray Foam</title>
+<meta name="theme-color" content="#1a5490">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SOS">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  :root { --blue: #1a5490; --navh: 62px; }
-  html, body { margin: 0; height: 100%; background: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; overflow: hidden; }
-  .frame { position: fixed; left: 0; right: 0; top: 0; bottom: 0; width: 100%; height: 100%; border: 0; background: #f4f6f9; display: none; }
-  body.hasnav .frame { height: calc(100% - var(--navh) - env(safe-area-inset-bottom)); bottom: auto; }
+  :root { --blue: #1a5490; --navh: 62px; --toph: 0px; --ink: #0f1b2d; }
+  html, body { margin: 0; height: 100%; background: #f2f4f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; overflow: hidden; }
+  body.hastop { --toph: calc(46px + env(safe-area-inset-top)); }
+  .frame { position: fixed; left: 0; right: 0; top: var(--toph); width: 100%; height: calc(100% - var(--toph)); border: 0; background: #f2f4f7; display: none; }
+  body.hasnav .frame { height: calc(100% - var(--toph) - var(--navh) - env(safe-area-inset-bottom)); }
   .frame.on { display: block; }
-  #cover { position: fixed; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-    background: #f4f6f9; color: var(--blue); z-index: 5; text-align: center; padding: 24px; box-sizing: border-box; }
+  #cover { position: fixed; left: 0; right: 0; top: var(--toph); bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: #f2f4f7; color: var(--blue); z-index: 5; text-align: center; padding: 24px; box-sizing: border-box; }
   body.hasnav #cover { bottom: calc(var(--navh) + env(safe-area-inset-bottom)); }
   #cover.hide { display: none; }
   .logo { font-size: 22px; font-weight: 800; letter-spacing: .5px; }
   .spin { width: 34px; height: 34px; border: 4px solid #cfdcec; border-top-color: var(--blue); border-radius: 50%; animation: s 0.8s linear infinite; }
   @keyframes s { to { transform: rotate(360deg); } }
-  .msg { color: #333; font-size: 15px; max-width: 320px; line-height: 1.45; }
-  .retry { display: none; background: var(--blue); color: #fff; border: 0; border-radius: 10px; padding: 12px 22px; font-size: 16px; font-weight: 700; }
-  #bar { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--blue); z-index: 9; transition: width .4s ease; }
-  #nav { position: fixed; left: 0; right: 0; bottom: 0; height: var(--navh); padding-bottom: env(safe-area-inset-bottom); background: #fff; border-top: 1px solid #dde3ea;
-    display: none; z-index: 8; }
+  .msg { color: #333; font-size: 15px; max-width: 330px; line-height: 1.45; }
+  .retry { display: none; background: var(--blue); color: #fff; border: 0; border-radius: 12px; padding: 12px 22px; font-size: 16px; font-weight: 700; }
+  #bar { position: fixed; top: var(--toph); left: 0; height: 3px; width: 0; background: var(--blue); z-index: 9; transition: width .4s ease; }
+  /* top bar: always in the home-screen app, and in Telegram only when offline / something waits to send */
+  #top { position: fixed; left: 0; right: 0; top: 0; height: var(--toph); padding-top: env(safe-area-inset-top); box-sizing: border-box; background: #fff;
+    border-bottom: 1px solid #e3e8ef; display: none; align-items: center; gap: 8px; padding-left: 8px; padding-right: 10px; z-index: 10; }
+  body.hastop #top { display: flex; }
+  body.offline #top { background: #2b2f36; color: #fff; border-bottom-color: #2b2f36; }
+  #back { border: 0; background: none; color: var(--blue); font-size: 28px; line-height: 1; padding: 0 6px; visibility: hidden; }
+  body.offline #back { color: #fff; }
+  #ttl { font-weight: 800; font-size: 16px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.offline #ttl { color: #fff; }
+  #ttl small { font-weight: 600; font-size: 12px; color: #ffcf66; margin-left: 6px; }
+  #ob { margin-left: auto; border: 0; border-radius: 999px; padding: 6px 11px; font-weight: 800; font-size: 13px; background: #eaf1fb; color: var(--blue); display: none; white-space: nowrap; }
+  #ob.show { display: inline-block; }
+  body.offline #ob { background: #ffcf66; color: #2b2f36; }
+  #nav { position: fixed; left: 0; right: 0; bottom: 0; height: var(--navh); padding-bottom: env(safe-area-inset-bottom); background: #fff; border-top: 1px solid #dde3ea; display: none; z-index: 8; }
   body.hasnav #nav { display: flex; }
   #nav button { flex: 1; border: 0; background: none; color: #6b7785; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0; }
   #nav button span { font-size: 22px; line-height: 1; }
   #nav button.on { color: var(--blue); }
-  #nav button.on span { transform: scale(1.08); }
+  #home { position: fixed; left: 12px; right: 12px; bottom: calc(var(--navh) + env(safe-area-inset-bottom) + 10px); z-index: 9; display: none;
+    background: #0f1b2d; color: #fff; border-radius: 16px; padding: 12px 12px 12px 14px; box-shadow: 0 10px 30px rgba(15,27,45,.35); align-items: center; gap: 10px; font-size: 14px; }
+  body:not(.hasnav) #home { bottom: calc(env(safe-area-inset-bottom) + 12px); }
+  #home.show { display: flex; }
+  #home b { display: block; font-size: 15px; }
+  #home .add { margin-left: auto; background: #fff; color: #1a5490; border: 0; border-radius: 999px; padding: 9px 14px; font-weight: 800; font-size: 14px; }
+  #home .x { background: none; border: 0; color: #9fb0c4; font-size: 20px; padding: 0 2px; }
+  /* sheets (setup, outbox) */
+  #sheetbg { position: fixed; inset: 0; background: rgba(15,27,45,.45); display: none; z-index: 20; align-items: flex-end; justify-content: center; }
+  #sheetbg.show { display: flex; }
+  #sheet { background: #fff; width: 100%; max-width: 640px; border-radius: 20px 20px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 85vh; overflow: auto; box-sizing: border-box; font-size: 15px; color: var(--ink); }
+  #sheet h3 { margin: 0 0 8px; font-size: 19px; }
+  #sheet p, #sheet li { line-height: 1.45; color: #344054; }
+  #sheet ol { padding-left: 20px; }
+  #sheet .b { display: block; width: 100%; border: 0; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 10px; background: #eaf1fb; color: var(--blue); }
+  #sheet .b.pri { background: var(--blue); color: #fff; }
+  #sheet .it { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid #e3e8ef; font-size: 14px; }
+  #sheet .it .er { color: #c0362c; font-size: 12px; }
+  #sheet .lnk { word-break: break-all; font-size: 12px; background: #f2f4f7; padding: 8px; border-radius: 8px; color: #475467; }
+  #sheet .mini { border: 0; background: none; color: var(--blue); font-weight: 700; font-size: 13px; padding: 0 4px; }
 </style>
 </head>
 <body>
+<div id="top"><button id="back" aria-label="Back">‹</button><div id="ttl">SOS Spray Foam</div><button id="ob"></button></div>
 <div id="bar"></div>
 <div id="cover"><div class="logo">SOS Spray Foam</div><div class="spin" id="spin"></div><div class="msg" id="msg">Loading…</div>
   <button class="retry" id="retry" onclick="location.reload()">Try again</button></div>
 <div id="frames"></div>
+<div id="home"><div style="font-size:26px">📲</div><div><b>Put SOS on your home screen</b>One tap to open — and it works with no signal.</div><button class="add" id="homeAdd">Set up</button><button class="x" id="homeX">✕</button></div>
 <div id="nav">
   <button data-go="board"><span>📋</span>Board</button>
   <button data-go="new"><span>➕</span>New</button>
@@ -42,20 +84,29 @@
   <button data-go="stock"><span>📦</span>Stock</button>
   <button data-go="rcpt"><span>📸</span>Receipt</button>
 </div>
+<div id="sheetbg"><div id="sheet"></div></div>
 <script>
 (function () {
-  var TG = window.Telegram && Telegram.WebApp;
-  if (TG) { try { TG.ready(); TG.expand(); TG.setHeaderColor && TG.setHeaderColor('#1a5490'); TG.setBackgroundColor && TG.setBackgroundColor('#f4f6f9'); } catch (e) { } }
+  var TG0 = window.Telegram && Telegram.WebApp;
+  var INTG = !!(TG0 && TG0.initData);                       // opened inside Telegram
+  var TG = INTG ? TG0 : null;
+  var STANDALONE = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if (TG) { try { TG.ready(); TG.expand(); TG.setHeaderColor && TG.setHeaderColor('#1a5490'); TG.setBackgroundColor && TG.setBackgroundColor('#f2f4f7'); } catch (e) { } }
+  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js').catch(function () { }); } catch (e) { } }
 
-  // ---- where the SOS script lives (comes in the link Telegram opened, then remembered) ----
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k) || ''; if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } return ''; }
+
+  // ---- where the SOS script lives + this phone's pass (both come in the setup link, then are remembered) ----
   var hash = {};
   location.hash.replace(/^#/, '').split('&').forEach(function (kv) {
     if (!kv) return; var i = kv.indexOf('='); var k = decodeURIComponent(i < 0 ? kv : kv.slice(0, i)); var v = i < 0 ? '' : decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' '));
     hash[k] = v;
   });
-  var API = hash.api || '';
-  try { if (API) localStorage.setItem('sosApi', API); else API = localStorage.getItem('sosApi') || ''; } catch (e) { }
+  var API = hash.api || ''; if (API) ls('sosApi', API); else API = ls('sosApi');
   delete hash.api;
+  var qs = {}; location.search.replace(/^\?/, '').split('&').forEach(function (kv) { if (!kv) return; var i = kv.indexOf('='); qs[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1)); });
+  if (qs.t && !INTG) ls('sosTok', qs.t);
+  var TOKEN = INTG ? '' : ls('sosTok');
 
   var cover = document.getElementById('cover'), msg = document.getElementById('msg'), bar = document.getElementById('bar');
   function show(text, err) {
@@ -69,35 +120,258 @@
     if (busyCount) { bar.style.transition = 'width 6s cubic-bezier(.1,.7,.2,1)'; bar.style.width = '85%'; }
     else { bar.style.transition = 'width .2s'; bar.style.width = '100%'; setTimeout(function () { if (!busyCount) { bar.style.transition = 'none'; bar.style.width = '0'; } }, 250); }
   }
+  var sheetbg = document.getElementById('sheetbg'), sheet = document.getElementById('sheet');
+  function openSheet(h) { sheet.innerHTML = h; sheetbg.classList.add('show'); }
+  function closeSheet() { sheetbg.classList.remove('show'); }
+  sheetbg.addEventListener('click', function (e) { if (e.target === sheetbg) closeSheet(); });
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-  if (!TG || !TG.initData) { show('Open this from the SOS Spray Foam bot in Telegram.', true); return; }
-  if (!API) { show('This app needs to be opened from a button in the SOS bot the first time.', true); return; }
+  if (!INTG && !TOKEN) {
+    show('', true); document.getElementById('retry').style.display = 'none';
+    msg.innerHTML = '<b>Set up this phone first</b><br><br>Open the SOS app in Telegram, tap <b>⋯</b> (top right) → <b>Settings</b>, then follow the steps. It takes a minute.';
+    return;
+  }
+  if (!API) { show('Open the setup link from the SOS app in Telegram one more time.', true); return; }
+
+  // ---- phone storage (IndexedDB): saved screens, the no-signal kit, and the waiting-to-send list ----
+  var DBP = new Promise(function (res) {
+    try {
+      var rq = indexedDB.open('sos', 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore('kv'); };
+      rq.onsuccess = function () { res(rq.result); };
+      rq.onerror = function () { res(null); };
+    } catch (e) { res(null); }
+  });
+  function kvGet(k) { return DBP.then(function (db) { if (!db) return null; return new Promise(function (res) { try { var r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = function () { res(r.result === undefined ? null : r.result); }; r.onerror = function () { res(null); }; } catch (e) { res(null); } }); }); }
+  function kvSet(k, v) { return DBP.then(function (db) { if (!db) return; return new Promise(function (res) { try { var tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = res; } catch (e) { res(); } }); }); }
+
+  // ---- online / offline ----
+  var OFF = false, QUEUE = [], FAILED = [], IDMAP = {}, FAKELEADS = {}, PACK = null;
+  var ready = Promise.all([kvGet('queue'), kvGet('failed'), kvGet('idmap'), kvGet('fakeleads'), kvGet('pack')]).then(function (a) {
+    QUEUE = a[0] || []; FAILED = a[1] || []; IDMAP = a[2] || {}; FAKELEADS = a[3] || {}; PACK = a[4] || null; topbar();
+  });
+  function saveQ() { kvSet('queue', QUEUE); kvSet('failed', FAILED); kvSet('idmap', IDMAP); kvSet('fakeleads', FAKELEADS); topbar(); }
+  function setOff(v) { if (OFF === v) return; OFF = v; document.body.classList.toggle('offline', OFF); topbar(); if (!OFF) setTimeout(sync, 300); }
+  window.addEventListener('online', function () { ping(); });
+  window.addEventListener('offline', function () { setOff(true); });
+  function topbar() {
+    var n = QUEUE.length, f = FAILED.length;
+    document.body.classList.toggle('hastop', !INTG || OFF || n > 0 || f > 0);
+    document.getElementById('ttl').innerHTML = (OFF ? '📴 Offline<small>some features are unavailable</small>' : 'SOS Spray Foam');
+    var ob = document.getElementById('ob');
+    ob.textContent = f ? '⚠️ ' + f + ' did not send' : n ? (OFF ? '📤 ' + n + ' saved' : '📤 Sending ' + n + '…') : (OFF ? '📤 0 saved' : '');
+    ob.classList.toggle('show', !!(n || f || OFF));
+    backBtn();
+  }
+  document.getElementById('ob').onclick = outboxSheet;
 
   // ---- talking to the SOS script ----
-  function post(body) {
-    body.initData = TG.initData;
-    return fetch(API + (API.indexOf('?') < 0 ? '?' : '&') + 'app=1', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' })
-      .then(function (r) { return r.text(); })
-      .then(function (t) { var j; try { j = JSON.parse(t); } catch (e) { throw new Error('The SOS script did not answer. Is it deployed?'); } if (!j.ok) throw new Error(j.error || 'Something went wrong'); return j; });
+  function auth(body) { if (INTG) body.initData = TG.initData; else body.token = TOKEN; return body; }
+  function postRaw(body) {
+    return fetch(API + (API.indexOf('?') < 0 ? '?' : '&') + 'app=1', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(auth(body)), redirect: 'follow' })
+      .then(function (r) { return r.text(); }, function () { var e = new Error('No signal'); e.net = true; throw e; })
+      .then(function (t) { var j; try { j = JSON.parse(t); } catch (e) { var x = new Error('The SOS script did not answer.'); x.net = /<html/i.test(t) ? false : true; throw x; } if (!j.ok) throw new Error(j.error || 'Something went wrong'); return j; });
   }
-  // google.script.run for the screens: same calls, sent through post()
-  function makeRun(ok, fail) {
+  function ping() { postRaw({ op: 'ping' }).then(function () { setOff(false); }, function (e) { if (e.net) setOff(true); }); }
+  setInterval(function () { if (OFF || QUEUE.length) ping(); }, 30000);
+
+  function pageKey(p) {
+    var pg = String(p.p || '');
+    if ((!pg || pg === 'office') && !p.lead) return 'office';
+    if (pg === 'home') return 'home';
+    if (pg === 'crew' && !p.lead) return 'crew';
+    return '';
+  }
+  var CACHE_CALLS = { crmOfficeLoad: 1, crmInvLoad: 1, crmCrewInvLoad: 1 };
+  function post(body, win) {
+    if (OFF || navigator.onLine === false) return offline(body, win);
+    return postRaw(body).then(function (j) {
+      setOff(false);
+      if (body.op === 'page') { var k = pageKey(body.params || {}); if (k) kvSet('page:' + k, j.html); if (j.role) ls('sosRole', j.role); }
+      if (body.op === 'call' && CACHE_CALLS[body.fn]) kvSet('call:' + body.fn, j.result);
+      return j;
+    }, function (e) { if (e.net) { setOff(true); return offline(body, win); } throw e; });
+  }
+
+  // ---- what works with no signal: saved screens, and recording things to send later ----
+  function noSignal(what) { return Promise.reject(new Error('📴 No signal — ' + (what || 'this needs signal') + '. Everything you record is saved and sends when signal comes back.')); }
+  function nextFake(kind) { var n = Number(ls('sosFake') || 0) + 1; ls('sosFake', String(n)); return 'off-' + kind + n + '-' + Date.now().toString(36); }
+  function enqueue(fn, args, label, extra) { QUEUE.push(Object.assign({ fn: fn, args: args, label: label, at: Date.now() }, extra || {})); saveQ(); }
+  var SAVED = 'Saved on this phone (no signal). It sends by itself when signal comes back.';
+  function nameFor(uid, w) {
+    try {
+      var D = w && w.D; var list = (D && (D.jobs || D.items)) || [];
+      for (var i = 0; i < list.length; i++) if (list[i].id === uid) return list[i].name;
+      if (FAKELEADS[uid]) return FAKELEADS[uid].name;
+    } catch (e) { }
+    return '';
+  }
+  function offline(body, win) {
+    if (body.op === 'page') {
+      var p = body.params || {};
+      if (String(p.p) === 'price') return kvGet('pack').then(function (pk) {
+        pk = pk || PACK; if (!pk) return noSignal('the pricing form was not saved on this phone yet (open SOS once with signal)');
+        var l = (pk.leads || []).filter(function (x) { return x.id === p.lead; })[0] || FAKELEADS[p.lead];
+        if (!l) return noSignal('this customer was not saved on this phone');
+        var D = { lead: { id: l.id, name: l.name, phone: l.phone || '', email: l.email || '', address: l.address || '', details: l.details || '' }, key: p.k || l.key, role: pk.role === 'owner' ? 'owner' : 'crew',
+          base: API, P: pk.P, report: null, photos: [], estId: '', company: pk.company || 'SOS Spray Foam' };
+        var json = JSON.stringify(D).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+        return { ok: true, role: ls('sosRole'), html: String(pk.priceTpl).replace('"__SOS_OFFLINE_DATA__"', function () { return json; }) };
+      });
+      var k = pageKey(p);
+      if (!k) return noSignal('this screen');
+      return kvGet('page:' + k).then(function (h) { if (!h) return noSignal('this screen was not saved on this phone yet'); return { ok: true, role: ls('sosRole'), html: h }; });
+    }
+    if (body.op !== 'call') return noSignal();
+    var fn = body.fn, a = body.args || [];
+    function done(v) { return Promise.resolve({ ok: true, result: v, offline: true }); }
+    if (CACHE_CALLS[fn]) return kvGet('call:' + fn).then(function (v) { return v ? { ok: true, result: v } : noSignal('this was not saved on this phone yet'); });
+    switch (fn) {
+      case 'crmCrewTimesheet': enqueue(fn, a, '⏱ Hours for ' + ((a[1] || {}).date || 'a day')); return done(SAVED);
+      case 'crmCrewFinish': enqueue(fn, a, '✅ Job finished'); return done(SAVED);
+      case 'crmCrewReceiptRead': return done(true);
+      case 'crmCrewReceipt': { var rid = nextFake('r'); enqueue(fn, a, '📸 Receipt', { fake: rid }); return done({ ok: true, id: rid, message: SAVED }); }
+      case 'crmOfficeReceipt': enqueue(fn, a, '📸 Receipt'); return done({ ok: true, id: '', message: SAVED + ' Claude reads it then.' });
+      case 'crmCrewNewCustomer': {
+        var cid = nextFake('c'), ck = nextFake('k'), d = a[1] || {};
+        FAKELEADS[cid] = { id: cid, name: d.name, phone: d.phone, email: d.email, address: d.address, details: d.details, key: ck };
+        enqueue(fn, [a[0], d, true], '🆕 New customer — ' + (d.name || ''), { fake: cid, fakeKey: ck });
+        return done({ uid: cid, priceUrl: API + '?p=price&lead=' + encodeURIComponent(cid) + '&k=' + encodeURIComponent(ck) });
+      }
+      case 'crmNewCustomer': {
+        var oid = nextFake('c'), od = a[1] || {};
+        FAKELEADS[oid] = { id: oid, name: od.name, phone: od.phone, email: od.email, address: od.address, details: od.details, key: a[0] };
+        enqueue(fn, a, '🆕 New customer — ' + (od.name || ''), { fake: oid });
+        return kvGet('call:crmOfficeLoad').then(function (b) {
+          if (b && b.items) { b.items.unshift({ id: oid, name: od.name, phone: od.phone || '', email: od.email || '', address: od.address || '', details: od.details || '', stage: 'new', age: 0,
+            warn: '', assigned: '', visit: '', visitTime: '', start: '', days: 1, end: '', next: '📴 Saved offline — sends with signal', nextDue: '', notes: '', est: null, final: null, textOk: !!od.textOk }); kvSet('call:crmOfficeLoad', b); }
+          return { ok: true, result: oid };
+        });
+      }
+      case 'crmUploadPhoto': { var pid = nextFake('p'); enqueue(fn, a, '📷 Photo', { fake: pid }); return done({ id: pid, url: '' }); }
+      case 'crmSubmitPricing': {
+        var tot = 0; try { tot = win && win.crmPriceJob_ ? win.crmPriceJob_(a[2], win.P).summary.total : 0; } catch (e) { }
+        var who = (FAKELEADS[a[0]] || {}).name || ((PACK && PACK.leads || []).filter(function (x) { return x.id === a[0]; })[0] || {}).name || '';
+        enqueue(fn, a, '💲 Price — ' + who);
+        return done({ ok: true, estId: '', total: tot, reviewUrl: '', message: 'Saved on this phone (no signal). It goes to Review when signal comes back. Travel is added then.' });
+      }
+      case 'crmCrewOmw': {
+        var nm = nameFor(a[1], win);
+        enqueue(fn, a, '🚗 Tell ' + (nm || 'the customer') + ' you are on the way', { ask: true, uid: a[1] });
+        return done('📴 No signal. Saved — when signal comes back, SOS will ask if you still want to tell ' + (nm || 'them') + ' you are on the way.');
+      }
+      case 'crmCrewText': case 'crmOfficeText': {
+        var tn = nameFor(a[1], win);
+        enqueue(fn, a, '💬 Text to ' + (tn || 'customer') + ': “' + String(a[2] || '').slice(0, 60) + '”', { ask: true, uid: a[1] });
+        var tx = (win && win.TX) ? JSON.parse(JSON.stringify(win.TX)) : { name: tn, phone: '', on: true, ok: true, log: [] };
+        tx.log = (tx.log || []).concat([{ when: 'waiting for signal', kind: 'Text out', by: '📴 saved', text: String(a[2] || '') }]);
+        return done(tx);
+      }
+      case 'crmCrewPayText': case 'crmOfficePayText': {
+        var pn = nameFor(a[1], win);
+        enqueue(fn, a, '📱 Text the pay link to ' + (pn || 'customer'), { ask: true, uid: a[1] });
+        return done('📴 No signal. Saved — when signal comes back, SOS will ask if you still want to send it.');
+      }
+      case 'crmCrewPayAsk': enqueue(fn, a, '🙋 Ask Patrick for the final invoice'); return done(SAVED);
+      case 'crmDriveHours': return done({ hrs: 0, error: 'no signal — travel is added when it sends' });
+      case 'crmInvCount': case 'crmCrewInvCount': case 'crmInvReceive': case 'crmCrewInvReceive':
+        enqueue(fn, a, /Count/.test(fn) ? '📦 Stock count' : '🚚 Delivery checked in');
+        return Promise.all([kvGet('call:' + (/Crew/.test(fn) ? 'crmCrewInvLoad' : 'crmInvLoad')), kvGet('call:crmOfficeLoad')]).then(function (v) { return { ok: true, result: { message: SAVED, data: v[0] || (v[1] && v[1].inv) } }; });
+      case 'crmOfficeSavePlan': enqueue(fn, a, '📝 Next step / notes'); return kvGet('call:crmOfficeLoad').then(function (v) { return { ok: true, result: v }; });
+      default: return noSignal();
+    }
+  }
+
+  // ---- sending everything that was saved, in order, when signal is back ----
+  var SYNCING = false;
+  function sub(v) {
+    if (typeof v === 'string') return IDMAP[v] !== undefined ? IDMAP[v] : v;
+    if (Array.isArray(v)) return v.map(sub);
+    if (v && typeof v === 'object') { var o = {}; Object.keys(v).forEach(function (k) { o[k] = sub(v[k]); }); return o; }
+    return v;
+  }
+  function sync() {
+    if (SYNCING || OFF || !QUEUE.length) return;
+    SYNCING = true; topbar();
+    (function step() {
+      if (!QUEUE.length || OFF) { SYNCING = false; saveQ(); afterSync(); return; }
+      var it = QUEUE[0];
+      if (it.ask && !it.asked) { askFirst(it, step); return; }
+      postRaw({ op: 'call', fn: it.fn, args: sub(it.args) }).then(function (j) {
+        var r = j.result;
+        if (it.fake) {
+          if (it.fn === 'crmCrewNewCustomer' && r) { IDMAP[it.fake] = r.uid; var m = String(r.priceUrl || '').match(/[?&]k=([^&]+)/); if (m && it.fakeKey) IDMAP[it.fakeKey] = decodeURIComponent(m[1]); }
+          else if (it.fn === 'crmNewCustomer') IDMAP[it.fake] = r;
+          else if (it.fn === 'crmUploadPhoto' && r) IDMAP[it.fake] = r.id;
+          else if (it.fn === 'crmCrewReceipt' && r) { IDMAP[it.fake] = r.id; postRaw({ op: 'call', fn: 'crmCrewReceiptRead', args: [sub(it.args)[0], r.id] }).catch(function () { }); }
+        }
+        QUEUE.shift(); saveQ(); step();
+      }, function (e) {
+        if (e.net) { SYNCING = false; setOff(true); return; }
+        it.error = e.message; FAILED.push(QUEUE.shift()); saveQ(); step();
+      });
+    })();
+  }
+  /** Customer messages saved with no signal: check they still make sense, then ask before sending. */
+  function askFirst(it, next) {
+    // already finished on this phone, but not sent yet?
+    var later = QUEUE.slice(1).filter(function (q) { return q.fn === 'crmCrewFinish' && String((q.args || [])[1]) === String(it.uid); })[0];
+    function ask(c) {
+      c = c || {};
+      if (later && it.fn === 'crmCrewOmw') c.skip = 'You marked this job finished after you saved this.';
+      var mins = Math.round((Date.now() - it.at) / 60000);
+      var ago = mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + ' hr ago';
+      var h = '<h3>📨 Still send this?</h3><p style="font-size:16px"><b>' + esc(it.label) + '</b></p><p>Saved ' + ago + ' while there was no signal.</p>';
+      if (c.skip) h += '<p style="background:#fff6e6;color:#7a4b00;padding:10px;border-radius:10px">⚠️ ' + esc(c.skip) + ' You probably do not need to send it.</p>';
+      else if (c.note) h += '<p style="background:#fff6e6;color:#7a4b00;padding:10px;border-radius:10px">' + esc(c.note) + '</p>';
+      h += '<button class="b ' + (c.skip ? '' : 'pri') + '" id="askYes">Yes, send it</button><button class="b ' + (c.skip ? 'pri' : '') + '" id="askNo">Don\u2019t send</button>';
+      openSheet(h);
+      document.getElementById('askYes').onclick = function () { closeSheet(); it.asked = true; saveQ(); next(); };
+      document.getElementById('askNo').onclick = function () { closeSheet(); QUEUE.shift(); saveQ(); next(); };
+    }
+    postRaw({ op: 'check', fn: it.fn, args: sub(it.args) }).then(ask, function (e) {
+      if (e.net) { SYNCING = false; setOff(true); return; }
+      ask({});
+    });
+  }
+  function afterSync() {
+    topbar();
+    var w = win('board'); if (w) quietRefresh(w);
+    if (!FAILED.length) try { TG && TG.HapticFeedback && TG.HapticFeedback.notificationOccurred('success'); } catch (e) { }
+  }
+  function outboxSheet() {
+    var h = '<h3>' + (OFF ? '📴 Offline' : '📤 Waiting to send') + '</h3>';
+    h += OFF ? '<p>No signal right now. What you record is saved on this phone and sends by itself when signal comes back. Sending proposals, invoices, payments, emails and texts need signal.</p>' : '';
+    if (!QUEUE.length && !FAILED.length) h += '<p>✓ Nothing waiting. Everything is sent.</p>';
+    QUEUE.forEach(function (q) { h += '<div class="it"><span>' + esc(q.label) + '</span><span style="color:#667085">' + new Date(q.at).toLocaleString([], { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '</span></div>'; });
+    FAILED.forEach(function (q, n) { h += '<div class="it"><span>' + esc(q.label) + '<div class="er">Did not go through: ' + esc(q.error) + '</div></span><span><button class="mini" data-retry="' + n + '">Retry</button><button class="mini" data-drop="' + n + '">Delete</button></span></div>'; });
+    if (!OFF && QUEUE.length) h += '<button class="b pri" id="syncNow">Send now</button>';
+    h += '<button class="b" id="shClose">Close</button>';
+    openSheet(h);
+    document.getElementById('shClose').onclick = closeSheet;
+    var sn = document.getElementById('syncNow'); if (sn) sn.onclick = function () { closeSheet(); sync(); };
+    [].forEach.call(sheet.querySelectorAll('[data-retry]'), function (b) { b.onclick = function () { var q = FAILED.splice(Number(b.getAttribute('data-retry')), 1)[0]; delete q.error; QUEUE.push(q); saveQ(); closeSheet(); sync(); }; });
+    [].forEach.call(sheet.querySelectorAll('[data-drop]'), function (b) { b.onclick = function () { if (!confirm('Delete this? It will not be sent.')) return; FAILED.splice(Number(b.getAttribute('data-drop')), 1); saveQ(); outboxSheet(); }; });
+  }
+
+  // google.script.run for the screens: same calls, sent through post() (or saved, with no signal)
+  function makeRun(ok, fail, w) {
     return new Proxy({}, { get: function (t, name) {
-      if (name === 'withSuccessHandler') return function (fn) { return makeRun(fn, fail); };
-      if (name === 'withFailureHandler') return function (fn) { return makeRun(ok, fn); };
-      if (name === 'withUserObject') return function () { return makeRun(ok, fail); };
+      if (name === 'withSuccessHandler') return function (fn) { return makeRun(fn, fail, w); };
+      if (name === 'withFailureHandler') return function (fn) { return makeRun(ok, fn, w); };
+      if (name === 'withUserObject') return function () { return makeRun(ok, fail, w); };
       return function () {
         var args = [].slice.call(arguments);
-        post({ op: 'call', fn: String(name), args: args })
+        post({ op: 'call', fn: String(name), args: args }, w)
           .then(function (j) { if (ok) ok(j.result); })
           .catch(function (e) { if (fail) fail(e); else console.error(e); });
       };
     } });
   }
-  window.__sosRun = function () { return makeRun(null, null); };
+  window.__sosRun = function (w) { return makeRun(null, null, w); };
 
   // ---- tabs: each one keeps its own screen loaded, so switching is instant ----
-  var ROLE = '', CUR = '', T = {};           // T[tab] = { frame, stack: [params], loaded }
+  var ROLE = '', CUR = '', T = {};
   function paramsOf(url) {
     var q = String(url).split('?')[1] || ''; var o = {};
     q.split('#')[0].split('&').forEach(function (kv) { if (!kv) return; var i = kv.indexOf('='); o[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' ')); });
@@ -108,7 +382,7 @@
     var pg = String(p.p || '');
     if (ROLE === 'crew') return pg === 'crew' || !pg ? 'home' : 'work';
     if (!pg || pg === 'office') return 'board';
-    return 'price';                          // home (Price a Job list), price form, review
+    return 'price';
   }
   function tab(name) {
     if (!T[name]) {
@@ -121,7 +395,7 @@
   function win(name) { var t = T[name]; return t && t.loaded ? t.frame.contentWindow : null; }
 
   var SHIM = '<script>(function(){' +
-    'var P=window.parent;window.__inApp=true;window.google={script:{get run(){return P.__sosRun();},host:{close:function(){}}}};' +
+    'var P=window.parent;window.__inApp=true;window.google={script:{get run(){return P.__sosRun(window);},host:{close:function(){}}}};' +
     'window.__appNav=function(u){P.__sosNav(u);};' +
     'document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a)return;var h=a.getAttribute("href");' +
     'if(!h||h.charAt(0)==="#"||/^javascript:/i.test(h))return;e.preventDefault();P.__sosLink(a.href);},true);' +
@@ -139,14 +413,17 @@
         t.frame.onload = function () {
           t.loaded = true; progress(false);
           if (CUR === name) cover.classList.add('hide');
-          var w = t.waiting; t.waiting = []; w.forEach(function (fn) { try { fn(t.frame.contentWindow); } catch (e) { } });
-          res(t.frame.contentWindow);
+          var w = t.frame.contentWindow;
+          if (OFF && name === 'board') kvGet('call:crmOfficeLoad').then(function (d) { if (d && w.load) try { w.load(d); } catch (e) { } });
+          if (!OFF && name === 'board' && w.D && w.D.items) kvSet('call:crmOfficeLoad', JSON.parse(JSON.stringify(w.D)));
+          var ws = t.waiting; t.waiting = []; ws.forEach(function (fn) { try { fn(w); } catch (e) { } });
+          res(w);
         };
         t.frame.srcdoc = html;
         if (push || !t.stack.length) t.stack.push(params || {}); else t.stack[t.stack.length - 1] = params || {};
         backBtn();
       });
-    }).catch(function (e) { progress(false); if (CUR === name || !CUR) show(e.message, true); });
+    }).catch(function (e) { progress(false); if (CUR === name || !CUR) show(e.message, true); else alert(e.message); });
   }
   function activate(name) {
     CUR = name;
@@ -157,13 +434,20 @@
     });
     backBtn();
   }
+  function canBack() { var t = T[CUR]; var main = ROLE === 'crew' ? 'home' : 'board'; return (t && t.stack.length > 1) || (CUR && CUR !== main); }
   function backBtn() {
-    try {
-      var t = T[CUR]; var main = ROLE === 'crew' ? 'home' : 'board';
-      if ((t && t.stack.length > 1) || (CUR && CUR !== main)) TG.BackButton.show(); else TG.BackButton.hide();
-    } catch (e) { }
+    var b = canBack();
+    try { if (TG) { if (b) TG.BackButton.show(); else TG.BackButton.hide(); } } catch (e) { }
+    var el = document.getElementById('back'); if (el) el.style.visibility = b && document.body.classList.contains('hastop') ? 'visible' : 'hidden';
   }
-  /** Run something on the Board once it is loaded (loads it if needed). */
+  function goBack() {
+    var t = T[CUR]; var main = ROLE === 'crew' ? 'home' : 'board';
+    if (t && t.stack.length > 1) { t.stack.pop(); load(CUR, t.stack[t.stack.length - 1], false, true); return; }
+    if (t && t.from && t.from !== CUR && T[t.from] && T[t.from].loaded) { var f = t.from; t.from = ''; activate(f); if (f === 'board') quietRefresh(win('board')); return; }
+    if (CUR !== main) { if (T[main] && T[main].loaded) { activate(main); if (main === 'board') quietRefresh(win('board')); } else go({}, false); }
+  }
+  document.getElementById('back').onclick = goBack;
+  try { if (TG) TG.BackButton.onClick(goBack); } catch (e) { }
   function onBoard(fn) {
     var t = tab('board');
     activate('board');
@@ -174,8 +458,6 @@
   function quietRefresh(w) {
     try { if (w && w.D && w.load && w.google) w.google.script.run.withSuccessHandler(function (d) { w.load(d); }).crmOfficeLoad(w.D.key); } catch (e) { }
   }
-
-  // links and page changes inside a screen
   function go(params, push) {
     var name = tabFor(params);
     if (name === 'board' && T.board && T.board.loaded) {
@@ -187,21 +469,21 @@
       return;
     }
     if (name === 'home' && T.home && T.home.loaded && !params.lead && !params.t) { activate('home'); return; }
-    if (name !== CUR) { var t = tab(name); t.stack = []; t.from = CUR; }   // Back returns to where you came from
+    if (name !== CUR) { var t = tab(name); t.stack = []; t.from = CUR; }
     load(name, params, push, true);
   }
   window.__sosNav = function (url) { go(paramsOf(url), true); };
   window.__sosLink = function (href) {
     if (isOurs(href)) { go(paramsOf(href), true); return; }
-    if (/^https?:/i.test(href)) { try { TG.openLink(href); } catch (e) { window.open(href, '_blank'); } return; }
-    window.location.href = href;                       // tel:, sms:, mailto:
+    if (/^https?:/i.test(href)) { if (OFF) { alert('📴 No signal — that page needs signal.'); return; } try { if (TG) TG.openLink(href); else window.open(href, '_blank'); } catch (e) { window.open(href, '_blank'); } return; }
+    window.location.href = href;
   };
 
   // bottom bar (owner)
   [].forEach.call(document.querySelectorAll('#nav button'), function (b) {
     b.addEventListener('click', function () {
       var g = b.getAttribute('data-go');
-      try { TG.HapticFeedback && TG.HapticFeedback.selectionChanged(); } catch (e) { }
+      try { TG && TG.HapticFeedback && TG.HapticFeedback.selectionChanged(); } catch (e) { }
       if (g === 'board') onBoard(function (w) { if (w.modal) w.modal(); if (w.goBoard) w.goBoard(); quietRefresh(w); });
       if (g === 'new') onBoard(function (w) { if (w.newDlg) w.newDlg(); });
       if (g === 'stock') onBoard(function (w) { if (w.inv) w.inv(); });
@@ -210,28 +492,77 @@
         var t = T.price;
         if (t && t.loaded && CUR !== 'price') { activate('price'); return; }
         if (t) t.stack = [];
-        load('price', { p: 'home' }, true, true);   // tapping Price again = back to the list
+        load('price', { p: 'home' }, true, true);
       }
     });
   });
 
-  try {
-    TG.BackButton.onClick(function () {
-      var t = T[CUR]; var main = ROLE === 'crew' ? 'home' : 'board';
-      if (t && t.stack.length > 1) { t.stack.pop(); load(CUR, t.stack[t.stack.length - 1], false, true); return; }
-      if (t && t.from && t.from !== CUR && T[t.from] && T[t.from].loaded) { var f = t.from; t.from = ''; activate(f); if (f === 'board') quietRefresh(win('board')); return; }
-      if (CUR !== main) { if (T[main] && T[main].loaded) { activate(main); if (main === 'board') quietRefresh(win('board')); } else go({}, false); }
-    });
-  } catch (e) { }
+  // ---- 📲 home-screen app (works with no signal) — set up from Telegram ----
+  function setupSheet() {
+    openSheet('<h3>📲 SOS on your home screen</h3><p>This puts SOS on your phone like a normal app. It opens with one tap, no chat — and it <b>keeps working with no signal</b>: hours, receipts, job finished, new customers, pricing and stock counts are saved and send by themselves later.</p>' +
+      '<button class="b pri" id="mk">Make my phone link</button><button class="b" id="shClose">Not now</button>');
+    document.getElementById('shClose').onclick = closeSheet;
+    document.getElementById('mk').onclick = function () {
+      var b = this; b.textContent = 'Making it…'; b.disabled = true;
+      postRaw({ op: 'devtoken', device: navigator.userAgent }).then(function (j) {
+        var link = location.origin + location.pathname + '?t=' + encodeURIComponent(j.token) + '#api=' + encodeURIComponent(API);
+        var ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        openSheet('<h3>📲 Almost done</h3><ol>' +
+          '<li>Tap <b>Open in ' + (ios ? 'Safari' : 'Chrome') + '</b> below.' + (ios ? ' If it opens inside Telegram, tap the <b>compass / Safari</b> button to open it in Safari.' : '') + '</li>' +
+          (ios ? '<li>In Safari tap the <b>Share</b> button (square with the arrow), then <b>Add to Home Screen</b> → <b>Add</b>.</li>' : '<li>In Chrome tap <b>⋮</b> → <b>Add to Home screen</b> (or <b>Install app</b>).</li>') +
+          '<li>Open SOS from the new icon. Done — it remembers you.</li></ol>' +
+          '<button class="b pri" id="op">Open in ' + (ios ? 'Safari' : 'Chrome') + '</button><button class="b" id="cp">Copy the link instead</button>' +
+          '<p class="lnk">' + esc(link) + '</p><p style="font-size:12px">Keep this link private — it signs in as you. Lost phone? Untick it on the App Devices tab.</p><button class="b" id="shClose">Close</button>');
+        document.getElementById('shClose').onclick = closeSheet;
+        document.getElementById('op').onclick = function () { try { TG.openLink(link, { try_instant_view: false }); } catch (e) { window.open(link, '_blank'); } };
+        document.getElementById('cp').onclick = function () { try { navigator.clipboard.writeText(link).then(function () { alert('Copied. Paste it into ' + (ios ? 'Safari' : 'Chrome') + '.'); }); } catch (e) { prompt('Copy this link:', link); } };
+        try { localStorage.setItem('sosHomeNo', '1'); } catch (e) { }
+      }).catch(function (e) { b.disabled = false; b.textContent = 'Make my phone link'; alert(e.message); });
+    };
+  }
+  if (TG) {
+    try { if (TG.SettingsButton) { TG.SettingsButton.show(); TG.SettingsButton.onClick(setupSheet); } } catch (e) { }
+    (function () {
+      var box = document.getElementById('home');
+      if (ls('sosHomeNo') === '1') return;
+      document.getElementById('homeX').onclick = function () { box.classList.remove('show'); ls('sosHomeNo', '1'); };
+      document.getElementById('homeAdd').onclick = function () { box.classList.remove('show'); setupSheet(); };
+      setTimeout(function () { box.classList.add('show'); }, 2500);
+    })();
+  } else if (!STANDALONE && qs.t) {
+    // opened from the setup link in Safari/Chrome: say how to finish
+    setTimeout(function () {
+      var ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      openSheet('<h3>📲 Add SOS to your home screen</h3><p>' + (ios ? 'Tap the <b>Share</b> button (square with the arrow) at the bottom, then <b>Add to Home Screen</b> → <b>Add</b>.' : 'Tap <b>⋮</b> (top right) → <b>Add to Home screen</b> or <b>Install app</b>.') +
+        '</p><p>Then open SOS from the new icon. You can use it right here too.</p><button class="b" id="shClose">OK</button>');
+      document.getElementById('shClose').onclick = closeSheet;
+    }, 1200);
+  }
 
-  // first screen: whatever the button asked for; owners also get the Board and Price list ready in the background
-  ROLE = String(hash.p || '') === 'crew' ? 'crew' : 'owner';          // the server corrects this with the first screen
-  document.body.classList.toggle('hasnav', ROLE === 'owner');
-  var first = tabFor(hash);
-  load(first, hash, false, true).then(function () {
-    if (ROLE !== 'owner') return;
-    if (first === 'board') setTimeout(function () { if (!T.price) load('price', { p: 'home' }, false, false); }, 1200);
-    else if (!T.board) setTimeout(function () { tab('board').loading = true; load('board', {}, false, false).then(function () { T.board.loading = false; }); }, 800);
+  // ---- the no-signal kit: the pricing form + your customers, refreshed in the background ----
+  function refreshPack() {
+    if (OFF) return;
+    kvGet('packAt').then(function (t) {
+      if (t && Date.now() - t < 20 * 60000) return;
+      postRaw({ op: 'pack' }).then(function (j) { PACK = j; kvSet('pack', j); kvSet('packAt', Date.now()); }).catch(function () { });
+    });
+  }
+
+  // ---- first screen ----
+  ready.then(function () {
+    ROLE = String(hash.p || '') === 'crew' ? 'crew' : (ls('sosRole') || 'owner');
+    document.body.classList.toggle('hasnav', ROLE === 'owner');
+    if (navigator.onLine === false) setOff(true);
+    topbar();
+    var first = tabFor(hash);
+    load(first, hash, false, true).then(function () {
+      setTimeout(refreshPack, 2500);
+      setTimeout(sync, 1500);
+      if (ROLE === 'crew' && !T.home && first !== 'home') setTimeout(function () { load('home', {}, false, false); }, 800);
+      if (ROLE !== 'owner') return;
+      if (first === 'board') setTimeout(function () { if (!T.price) load('price', { p: 'home' }, false, false); }, 1200);
+      else if (!T.board) setTimeout(function () { tab('board').loading = true; load('board', {}, false, false).then(function () { T.board.loading = false; }); }, 800);
+    });
   });
 })();
 </script>
