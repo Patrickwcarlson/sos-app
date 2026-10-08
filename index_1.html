@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>SOS Spray Foam</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --blue: #1a5490; --navh: 62px; }
+  html, body { margin: 0; height: 100%; background: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; overflow: hidden; }
+  .frame { position: fixed; left: 0; right: 0; top: 0; bottom: 0; width: 100%; height: 100%; border: 0; background: #f4f6f9; display: none; }
+  body.hasnav .frame { height: calc(100% - var(--navh) - env(safe-area-inset-bottom)); bottom: auto; }
+  .frame.on { display: block; }
+  #cover { position: fixed; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: #f4f6f9; color: var(--blue); z-index: 5; text-align: center; padding: 24px; box-sizing: border-box; }
+  body.hasnav #cover { bottom: calc(var(--navh) + env(safe-area-inset-bottom)); }
+  #cover.hide { display: none; }
+  .logo { font-size: 22px; font-weight: 800; letter-spacing: .5px; }
+  .spin { width: 34px; height: 34px; border: 4px solid #cfdcec; border-top-color: var(--blue); border-radius: 50%; animation: s 0.8s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .msg { color: #333; font-size: 15px; max-width: 320px; line-height: 1.45; }
+  .retry { display: none; background: var(--blue); color: #fff; border: 0; border-radius: 10px; padding: 12px 22px; font-size: 16px; font-weight: 700; }
+  #bar { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--blue); z-index: 9; transition: width .4s ease; }
+  #nav { position: fixed; left: 0; right: 0; bottom: 0; height: var(--navh); padding-bottom: env(safe-area-inset-bottom); background: #fff; border-top: 1px solid #dde3ea;
+    display: none; z-index: 8; }
+  body.hasnav #nav { display: flex; }
+  #nav button { flex: 1; border: 0; background: none; color: #6b7785; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0; }
+  #nav button span { font-size: 22px; line-height: 1; }
+  #nav button.on { color: var(--blue); }
+  #nav button.on span { transform: scale(1.08); }
+  #home { position: fixed; left: 12px; right: 12px; bottom: calc(var(--navh) + env(safe-area-inset-bottom) + 10px); z-index: 9; display: none;
+    background: #0f1b2d; color: #fff; border-radius: 16px; padding: 12px 12px 12px 14px; box-shadow: 0 10px 30px rgba(15,27,45,.35); align-items: center; gap: 10px; font-size: 14px; }
+  body:not(.hasnav) #home { bottom: calc(env(safe-area-inset-bottom) + 12px); }
+  #home.show { display: flex; }
+  #home b { display: block; font-size: 15px; }
+  #home .add { margin-left: auto; background: #fff; color: #1a5490; border: 0; border-radius: 999px; padding: 9px 14px; font-weight: 800; font-size: 14px; }
+  #home .x { background: none; border: 0; color: #9fb0c4; font-size: 20px; padding: 0 2px; }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="cover"><div class="logo">SOS Spray Foam</div><div class="spin" id="spin"></div><div class="msg" id="msg">Loading…</div>
+  <button class="retry" id="retry" onclick="location.reload()">Try again</button></div>
+<div id="frames"></div>
+<div id="home"><div style="font-size:26px">📲</div><div><b>Put SOS on your home screen</b>Open it with one tap, no chat.</div><button class="add" id="homeAdd">Add</button><button class="x" id="homeX">✕</button></div>
+<div id="nav">
+  <button data-go="board"><span>📋</span>Board</button>
+  <button data-go="new"><span>➕</span>New</button>
+  <button data-go="price"><span>💲</span>Price</button>
+  <button data-go="stock"><span>📦</span>Stock</button>
+  <button data-go="rcpt"><span>📸</span>Receipt</button>
+</div>
+<script>
+(function () {
+  var TG = window.Telegram && Telegram.WebApp;
+  if (TG) { try { TG.ready(); TG.expand(); TG.setHeaderColor && TG.setHeaderColor('#1a5490'); TG.setBackgroundColor && TG.setBackgroundColor('#f4f6f9'); } catch (e) { } }
+
+  // ---- where the SOS script lives (comes in the link Telegram opened, then remembered) ----
+  var hash = {};
+  location.hash.replace(/^#/, '').split('&').forEach(function (kv) {
+    if (!kv) return; var i = kv.indexOf('='); var k = decodeURIComponent(i < 0 ? kv : kv.slice(0, i)); var v = i < 0 ? '' : decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' '));
+    hash[k] = v;
+  });
+  var API = hash.api || '';
+  try { if (API) localStorage.setItem('sosApi', API); else API = localStorage.getItem('sosApi') || ''; } catch (e) { }
+  delete hash.api;
+
+  var cover = document.getElementById('cover'), msg = document.getElementById('msg'), bar = document.getElementById('bar');
+  function show(text, err) {
+    cover.classList.remove('hide'); msg.textContent = text;
+    document.getElementById('spin').style.display = err ? 'none' : 'block';
+    document.getElementById('retry').style.display = err ? 'inline-block' : 'none';
+  }
+  var busyCount = 0;
+  function progress(on) {
+    busyCount = Math.max(0, busyCount + (on ? 1 : -1));
+    if (busyCount) { bar.style.transition = 'width 6s cubic-bezier(.1,.7,.2,1)'; bar.style.width = '85%'; }
+    else { bar.style.transition = 'width .2s'; bar.style.width = '100%'; setTimeout(function () { if (!busyCount) { bar.style.transition = 'none'; bar.style.width = '0'; } }, 250); }
+  }
+
+  if (!TG || !TG.initData) { show('Open this from the SOS Spray Foam bot in Telegram.', true); return; }
+  if (!API) { show('This app needs to be opened from a button in the SOS bot the first time.', true); return; }
+
+  // ---- talking to the SOS script ----
+  function post(body) {
+    body.initData = TG.initData;
+    return fetch(API + (API.indexOf('?') < 0 ? '?' : '&') + 'app=1', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) { var j; try { j = JSON.parse(t); } catch (e) { throw new Error('The SOS script did not answer. Is it deployed?'); } if (!j.ok) throw new Error(j.error || 'Something went wrong'); return j; });
+  }
+  // google.script.run for the screens: same calls, sent through post()
+  function makeRun(ok, fail) {
+    return new Proxy({}, { get: function (t, name) {
+      if (name === 'withSuccessHandler') return function (fn) { return makeRun(fn, fail); };
+      if (name === 'withFailureHandler') return function (fn) { return makeRun(ok, fn); };
+      if (name === 'withUserObject') return function () { return makeRun(ok, fail); };
+      return function () {
+        var args = [].slice.call(arguments);
+        post({ op: 'call', fn: String(name), args: args })
+          .then(function (j) { if (ok) ok(j.result); })
+          .catch(function (e) { if (fail) fail(e); else console.error(e); });
+      };
+    } });
+  }
+  window.__sosRun = function () { return makeRun(null, null); };
+
+  // ---- tabs: each one keeps its own screen loaded, so switching is instant ----
+  var ROLE = '', CUR = '', T = {};           // T[tab] = { frame, stack: [params], loaded }
+  function paramsOf(url) {
+    var q = String(url).split('?')[1] || ''; var o = {};
+    q.split('#')[0].split('&').forEach(function (kv) { if (!kv) return; var i = kv.indexOf('='); o[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' ')); });
+    return o;
+  }
+  function isOurs(url) { return API && String(url).indexOf(API.split('?')[0]) === 0; }
+  function tabFor(p) {
+    var pg = String(p.p || '');
+    if (ROLE === 'crew') return pg === 'crew' || !pg ? 'home' : 'work';
+    if (!pg || pg === 'office') return 'board';
+    return 'price';                          // home (Price a Job list), price form, review
+  }
+  function tab(name) {
+    if (!T[name]) {
+      var f = document.createElement('iframe'); f.className = 'frame'; f.title = name;
+      document.getElementById('frames').appendChild(f);
+      T[name] = { frame: f, stack: [], loaded: false, waiting: [] };
+    }
+    return T[name];
+  }
+  function win(name) { var t = T[name]; return t && t.loaded ? t.frame.contentWindow : null; }
+
+  var SHIM = '<script>(function(){' +
+    'var P=window.parent;window.__inApp=true;window.google={script:{get run(){return P.__sosRun();},host:{close:function(){}}}};' +
+    'window.__appNav=function(u){P.__sosNav(u);};' +
+    'document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a)return;var h=a.getAttribute("href");' +
+    'if(!h||h.charAt(0)==="#"||/^javascript:/i.test(h))return;e.preventDefault();P.__sosLink(a.href);},true);' +
+    '})();<\/script>';
+
+  function load(name, params, push, showIt) {
+    var t = tab(name);
+    if (showIt) { activate(name); if (!t.loaded) show('Loading…'); }
+    progress(true);
+    return post({ op: 'page', params: params || {} }).then(function (j) {
+      if (j.role && j.role !== ROLE) { ROLE = j.role; document.body.classList.toggle('hasnav', ROLE === 'owner'); }
+      var html = String(j.html || '').replace(/<base[^>]*>/i, '');
+      html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, function (m) { return m + SHIM; }) : SHIM + html;
+      return new Promise(function (res) {
+        t.frame.onload = function () {
+          t.loaded = true; progress(false);
+          if (CUR === name) cover.classList.add('hide');
+          var w = t.waiting; t.waiting = []; w.forEach(function (fn) { try { fn(t.frame.contentWindow); } catch (e) { } });
+          res(t.frame.contentWindow);
+        };
+        t.frame.srcdoc = html;
+        if (push || !t.stack.length) t.stack.push(params || {}); else t.stack[t.stack.length - 1] = params || {};
+        backBtn();
+      });
+    }).catch(function (e) { progress(false); if (CUR === name || !CUR) show(e.message, true); });
+  }
+  function activate(name) {
+    CUR = name;
+    Object.keys(T).forEach(function (k) { T[k].frame.classList.toggle('on', k === name); });
+    if (T[name] && T[name].loaded) cover.classList.add('hide');
+    [].forEach.call(document.querySelectorAll('#nav button'), function (b) {
+      var g = b.getAttribute('data-go'); b.classList.toggle('on', (g === 'board' && name === 'board') || (g === 'price' && name === 'price'));
+    });
+    backBtn();
+  }
+  function backBtn() {
+    try {
+      var t = T[CUR]; var main = ROLE === 'crew' ? 'home' : 'board';
+      if ((t && t.stack.length > 1) || (CUR && CUR !== main)) TG.BackButton.show(); else TG.BackButton.hide();
+    } catch (e) { }
+  }
+  /** Run something on the Board once it is loaded (loads it if needed). */
+  function onBoard(fn) {
+    var t = tab('board');
+    activate('board');
+    if (t.loaded) { fn(t.frame.contentWindow); return; }
+    t.waiting.push(fn);
+    if (!t.loading) { t.loading = true; load('board', {}, false, true).then(function () { t.loading = false; }); }
+  }
+  function quietRefresh(w) {
+    try { if (w && w.D && w.load && w.google) w.google.script.run.withSuccessHandler(function (d) { w.load(d); }).crmOfficeLoad(w.D.key); } catch (e) { }
+  }
+
+  // links and page changes inside a screen
+  function go(params, push) {
+    var name = tabFor(params);
+    if (name === 'board' && T.board && T.board.loaded) {
+      activate('board');
+      var w = win('board'); quietRefresh(w);
+      if (params.v === 'inv' && w.inv) w.inv();
+      if (params.v === 'rcpt' && w.myRcpt) w.myRcpt();
+      if (params.v === 'text' && params.lead && w.textDlg) w.textDlg(params.lead);
+      return;
+    }
+    if (name === 'home' && T.home && T.home.loaded && !params.lead && !params.t) { activate('home'); return; }
+    if (name !== CUR) { var t = tab(name); t.stack = []; t.from = CUR; }   // Back returns to where you came from
+    load(name, params, push, true);
+  }
+  window.__sosNav = function (url) { go(paramsOf(url), true); };
+  window.__sosLink = function (href) {
+    if (isOurs(href)) { go(paramsOf(href), true); return; }
+    if (/^https?:/i.test(href)) { try { TG.openLink(href); } catch (e) { window.open(href, '_blank'); } return; }
+    window.location.href = href;                       // tel:, sms:, mailto:
+  };
+
+  // bottom bar (owner)
+  [].forEach.call(document.querySelectorAll('#nav button'), function (b) {
+    b.addEventListener('click', function () {
+      var g = b.getAttribute('data-go');
+      try { TG.HapticFeedback && TG.HapticFeedback.selectionChanged(); } catch (e) { }
+      if (g === 'board') onBoard(function (w) { if (w.modal) w.modal(); if (w.goBoard) w.goBoard(); quietRefresh(w); });
+      if (g === 'new') onBoard(function (w) { if (w.newDlg) w.newDlg(); });
+      if (g === 'stock') onBoard(function (w) { if (w.inv) w.inv(); });
+      if (g === 'rcpt') onBoard(function (w) { if (w.myRcpt) w.myRcpt(); });
+      if (g === 'price') {
+        var t = T.price;
+        if (t && t.loaded && CUR !== 'price') { activate('price'); return; }
+        if (t) t.stack = [];
+        load('price', { p: 'home' }, true, true);   // tapping Price again = back to the list
+      }
+    });
+  });
+
+  try {
+    TG.BackButton.onClick(function () {
+      var t = T[CUR]; var main = ROLE === 'crew' ? 'home' : 'board';
+      if (t && t.stack.length > 1) { t.stack.pop(); load(CUR, t.stack[t.stack.length - 1], false, true); return; }
+      if (t && t.from && t.from !== CUR && T[t.from] && T[t.from].loaded) { var f = t.from; t.from = ''; activate(f); if (f === 'board') quietRefresh(win('board')); return; }
+      if (CUR !== main) { if (T[main] && T[main].loaded) { activate(main); if (main === 'board') quietRefresh(win('board')); } else go({}, false); }
+    });
+  } catch (e) { }
+
+  // first screen: whatever the button asked for; owners also get the Board and Price list ready in the background
+  // 📲 home-screen button: offered once, if this phone's Telegram can do it
+  (function () {
+    var box = document.getElementById('home');
+    var no = false; try { no = localStorage.getItem('sosHomeNo') === '1'; } catch (e) { }
+    function hide(forever) { box.classList.remove('show'); if (forever) { try { localStorage.setItem('sosHomeNo', '1'); } catch (e) { } } }
+    document.getElementById('homeX').onclick = function () { hide(true); };
+    document.getElementById('homeAdd').onclick = function () { try { TG.addToHomeScreen(); } catch (e) { } hide(true); };
+    try { TG.onEvent && TG.onEvent('homeScreenAdded', function () { hide(true); }); } catch (e) { }
+    if (no || !TG.checkHomeScreenStatus) return;
+    try { TG.checkHomeScreenStatus(function (st) { if (st === 'missed' || st === 'unknown') setTimeout(function () { box.classList.add('show'); }, 2500); }); } catch (e) { }
+  })();
+
+  ROLE = String(hash.p || '') === 'crew' ? 'crew' : 'owner';          // the server corrects this with the first screen
+  document.body.classList.toggle('hasnav', ROLE === 'owner');
+  var first = tabFor(hash);
+  load(first, hash, false, true).then(function () {
+    if (ROLE !== 'owner') return;
+    if (first === 'board') setTimeout(function () { if (!T.price) load('price', { p: 'home' }, false, false); }, 1200);
+    else if (!T.board) setTimeout(function () { tab('board').loading = true; load('board', {}, false, false).then(function () { T.board.loading = false; }); }, 800);
+  });
+})();
+</script>
+</body>
+</html>
