@@ -182,7 +182,7 @@
     if (pg === 'crew' && !p.lead) return 'crew';
     return '';
   }
-  var CACHE_CALLS = { crmOfficeLoad: 1, crmInvLoad: 1, crmCrewInvLoad: 1 };
+  var CACHE_CALLS = { crmOfficeLoad: 1, crmInvLoad: 1, crmCrewInvLoad: 1, crmCrewLoad: 1 };
   function post(body, win) {
     if (OFF || navigator.onLine === false) return offline(body, win);
     return postRaw(body).then(function (j) {
@@ -401,29 +401,83 @@
     'if(!h||h.charAt(0)==="#"||/^javascript:/i.test(h))return;e.preventDefault();P.__sosLink(a.href);},true);' +
     '})();<\/script>';
 
+  function render(name, html, params, push) {
+    var t = tab(name);
+    html = String(html || '').replace(/<base[^>]*>/i, '');
+    html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, function (m) { return m + SHIM; }) : SHIM + html;
+    return new Promise(function (res) {
+      t.frame.onload = function () {
+        t.loaded = true;
+        if (CUR === name) cover.classList.add('hide');
+        var w = t.frame.contentWindow;
+        if (OFF && name === 'board') kvGet('call:crmOfficeLoad').then(function (d) { if (d && w.load) try { w.load(d); } catch (e) { } });
+        if (!OFF && name === 'board' && w.D && w.D.items && !t.fromCache) kvSet('call:crmOfficeLoad', JSON.parse(JSON.stringify(w.D)));
+        var ws = t.waiting; t.waiting = []; ws.forEach(function (fn) { try { fn(w); } catch (e) { } });
+        res(w);
+      };
+      t.frame.srcdoc = html;
+      if (push || !t.stack.length) t.stack.push(params || {}); else t.stack[t.stack.length - 1] = params || {};
+      backBtn();
+    });
+  }
   function load(name, params, push, showIt) {
     var t = tab(name);
     if (showIt) { activate(name); if (!t.loaded) show('Loading…'); }
     progress(true);
     return post({ op: 'page', params: params || {} }).then(function (j) {
-      if (j.role && j.role !== ROLE) { ROLE = j.role; document.body.classList.toggle('hasnav', ROLE === 'owner'); }
-      var html = String(j.html || '').replace(/<base[^>]*>/i, '');
-      html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, function (m) { return m + SHIM; }) : SHIM + html;
-      return new Promise(function (res) {
-        t.frame.onload = function () {
-          t.loaded = true; progress(false);
-          if (CUR === name) cover.classList.add('hide');
-          var w = t.frame.contentWindow;
-          if (OFF && name === 'board') kvGet('call:crmOfficeLoad').then(function (d) { if (d && w.load) try { w.load(d); } catch (e) { } });
-          if (!OFF && name === 'board' && w.D && w.D.items) kvSet('call:crmOfficeLoad', JSON.parse(JSON.stringify(w.D)));
-          var ws = t.waiting; t.waiting = []; ws.forEach(function (fn) { try { fn(w); } catch (e) { } });
-          res(w);
-        };
-        t.frame.srcdoc = html;
-        if (push || !t.stack.length) t.stack.push(params || {}); else t.stack[t.stack.length - 1] = params || {};
-        backBtn();
-      });
+      if (j.role && j.role !== ROLE) { ROLE = j.role; ls('sosRole', ROLE); document.body.classList.toggle('hasnav', ROLE === 'owner'); }
+      t.fromCache = false; progress(false);
+      return render(name, j.html, params, push);
     }).catch(function (e) { progress(false); if (CUR === name || !CUR) show(e.message, true); else alert(e.message); });
+  }
+  /** Instant start: show the screen saved last time right away, then freshen it quietly behind the scenes. */
+  function quickStart(name, params) {
+    var k = pageKey(params || {});
+    if (!k || (k === 'crew' && params.lead)) return Promise.resolve(false);
+    return kvGet('page:' + k).then(function (html) {
+      if (!html) return false;
+      var t = tab(name); t.fromCache = true;
+      activate(name);
+      return Promise.all([render(name, html, params, false), kvGet(name === 'board' ? 'call:crmOfficeLoad' : 'call:crmCrewLoad')]).then(function (r) {
+        var w = r[0], saved = r[1];
+        try { if (saved && name === 'board' && w.load) w.load(saved); if (saved && name === 'home' && w.reloadData) w.reloadData(saved); } catch (e) { }
+        if (params.v === 'inv' && w.inv) w.inv();
+        if (params.v === 'rcpt' && w.myRcpt) w.myRcpt();
+        if (params.v === 'text' && params.lead && w.textDlg) w.textDlg(params.lead);
+        freshen(name, params, w);
+        return true;
+      });
+    });
+  }
+  /** Never yank the screen while someone is typing or has a box open: the fresh numbers wait, then slip in. */
+  function busyTyping(w) {
+    try {
+      var d = w.document, a = d.activeElement, bg = d.getElementById('mbg');
+      if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+      if (bg && bg.style.display && bg.style.display !== 'none') return true;
+      var bz = d.getElementById('busy'); if (bz && bz.style.display === 'flex') return true;
+    } catch (e) { }
+    return false;
+  }
+  function whenIdle(w, fn, tries) {
+    tries = tries || 0;
+    if (!busyTyping(w) || tries > 240) { fn(); return; }
+    setTimeout(function () { whenIdle(w, fn, tries + 1); }, 1000);
+  }
+  function freshen(name, params, w) {
+    if (OFF) return;
+    progress(true);
+    var fn = name === 'board' ? 'crmOfficeLoad' : 'crmCrewLoad';
+    var key = w && w.D && w.D.key;
+    var data = key ? post({ op: 'call', fn: fn, args: [key] }).then(function (j) {
+      kvSet('call:' + fn, j.result);
+      whenIdle(w, function () { try { if (name === 'board' && w.load) w.load(j.result); if (name === 'home' && w.reloadData) w.reloadData(j.result); } catch (e) { } });
+    }) : Promise.resolve();
+    var page = postRaw({ op: 'page', params: params || {} }).then(function (j) {     // newest version of the screen, for next time
+      if (j.role) { ls('sosRole', j.role); if (j.role !== ROLE) { ROLE = j.role; document.body.classList.toggle('hasnav', ROLE === 'owner'); } }
+      kvSet('page:' + pageKey(params || {}), j.html);
+    });
+    Promise.all([data, page]).then(function () { progress(false); T[name].fromCache = false; }, function (e) { progress(false); if (e && e.net) setOff(true); });
   }
   function activate(name) {
     CUR = name;
@@ -555,7 +609,7 @@
     if (navigator.onLine === false) setOff(true);
     topbar();
     var first = tabFor(hash);
-    load(first, hash, false, true).then(function () {
+    quickStart(first, hash).then(function (quick) { return quick ? true : load(first, hash, false, true); }).then(function () {
       setTimeout(refreshPack, 2500);
       setTimeout(sync, 1500);
       if (ROLE === 'crew' && !T.home && first !== 'home') setTimeout(function () { load('home', {}, false, false); }, 800);
